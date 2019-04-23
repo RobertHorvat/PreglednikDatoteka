@@ -1,0 +1,206 @@
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.IO;
+
+namespace DatotecniSustav01
+{
+    class Program
+    {
+        //lista imena direktorija radi backspace tipke
+        public static List<string> directoryPath = new List<string>();
+        //metoda za pretrazivanje direktorija
+        public static void PretraziDirektorij(string direktorij)
+        {
+            DirectoryInfo dirInfo = new DirectoryInfo(direktorij);
+            //provjerava ako ima vec direktorija istog naziva i ako nema ga zapisuje u listu
+            if(!directoryPath.Contains(dirInfo.FullName))
+                directoryPath.Add(dirInfo.FullName);
+
+            var direktoriji = dirInfo.GetDirectories();
+            var datoteke = dirInfo.GetFiles();
+            long velicina = 0;
+            ObservableCollection<DirectoryInfo> dirs = new ObservableCollection<DirectoryInfo>(direktoriji);
+            ObservableCollection<FileInfo> files = new ObservableCollection<FileInfo>(datoteke);
+
+            Console.WriteLine("+------------------+-------------+---------+------------------------------------------+");
+            Console.WriteLine("| Veličina       B |          KB |      MB | Nazivi direktorija/datoteka              |");
+            Console.WriteLine("+------------------+-------------+---------+------------------------------------------+");
+            foreach (DirectoryInfo d in dirs)
+            {
+                long velicinaDir = 0;
+                FileInfo[] fileInfos = d.GetFiles();
+
+                foreach (FileInfo f in fileInfos)
+                {
+                    velicinaDir += f.Length;
+                }
+
+                Console.WriteLine("|{0, 15} B | {1, 8} KB | {2, 4} MB | {3,40} |",
+                    velicinaDir,
+                    velicinaDir / 1024,
+                    velicinaDir / (1024 * 1024),
+                    d.Name);
+            }
+            foreach (FileInfo d in files)
+            {
+                velicina += d.Length;
+                Console.WriteLine("|{0, 15} B | {1, 8} KB | {2, 4} MB | {3,40} |",
+                    d.Length,
+                    d.Length / 1024,
+                    d.Length / (1024 * 1024),
+                    d.FullName);
+            }
+            Console.WriteLine("+------------------+-------------+---------+------------------------------------------+");
+            Console.WriteLine("|{0, 15} B | {1, 8} KB | {2, 4} MB |                                          |",
+                velicina,
+                velicina / 1024,
+                velicina / (1024 * 1024));
+            Console.WriteLine("+------------------+-------------+---------+------------------------------------------+");
+
+           //broji direktorije u određenom direktoriju da bi ograničio kretanje kursora po listi
+            int brojRedova = dirs.Count;
+            int pokazivacY = 0;
+            int oduzmi = 0;
+            int broj = 0;
+            int cekanjeTreperenje = 500;
+            Console.CursorVisible = false;
+
+            //gleda dali je inicijalno pokretanje da bi znao izracunati pocetnu poziciju kursora
+            if (directoryPath.Count == 1 && dirs.Count>0)
+            {
+                pokazivacY = 5;
+                oduzmi = 4;
+                broj = 5;
+            }
+            else if(dirs.Count>0 && directoryPath.Count>1)
+            {
+                pokazivacY = 3;
+                oduzmi = 2;
+                broj = 3;
+            }
+            
+           
+
+            
+            while (true)
+            {
+                //treperenje kursora
+                System.Threading.Thread.Sleep(cekanjeTreperenje);
+                Console.SetCursorPosition(1, pokazivacY);
+                Console.Write(" ");
+                System.Threading.Thread.Sleep(cekanjeTreperenje);
+                Console.SetCursorPosition(1, pokazivacY);
+                Console.Write(">");
+
+                if (Console.KeyAvailable)
+                {
+                    //Console.WriteLine(" ");
+                    ConsoleKeyInfo pritisnutaTipka = Console.ReadKey(true);
+                    //premjesta kurson jednu poziciju nize
+                    if (pritisnutaTipka.Key == ConsoleKey.DownArrow)
+                    {
+                        if (pokazivacY < (brojRedova+oduzmi))
+                        {
+                            Console.SetCursorPosition(1,pokazivacY);
+                            Console.Write(" ");
+                            pokazivacY++;
+                        }
+
+
+                    }
+                    //premjesta kursor jednu poziciju vise
+                    else if (pritisnutaTipka.Key == ConsoleKey.UpArrow)
+                    {
+                        if (pokazivacY > broj)
+                        {
+                            Console.SetCursorPosition(1, pokazivacY);
+                            Console.Write(" ");
+                            pokazivacY--;
+                        }
+
+                    }
+                    //Odabire Direktorij i otvara ga u novoj tablici
+                    else if (pritisnutaTipka.Key == ConsoleKey.Enter)
+                    {
+                        DirectoryInfo dir = dirs[pokazivacY-broj];
+                        string directory = dir.FullName;
+                        Console.Clear();
+                        PretraziDirektorij(directory);
+                    }
+                    
+                    //Pokušana implementirati funkcija za vraćanje unazad kod direktorija
+
+                    //else if(pritisnutaTipka.Key==ConsoleKey.Backspace)
+                    //{
+                    //    int pozicija = directoryPath.Count - 2;
+                    //    if(pozicija>=0)
+                    //    {
+                    //        string directory = directoryPath[pozicija];
+                    //        Console.Clear();
+                    //        PretraziDirektorij(directory);
+                    //    }
+                       
+                    //}
+
+                }
+            }
+        }
+        static void Main(string[] args)
+        {
+            string direktorij; //= @"C:\";
+            Console.WriteLine("Upisite direktorij koji želite pretražiti:");
+            direktorij = Console.ReadLine();
+            if (Directory.Exists(direktorij))
+            {
+                PretraziDirektorij(direktorij);
+            }
+            else
+            {
+                //Dohvat svih logickih diskova i omogucena fleksibilnost tablice
+                DriveInfo[] drives = DriveInfo.GetDrives();
+                int najveceIme = 0;
+                foreach (DriveInfo d in drives)
+                {
+                    if (d.IsReady)
+                    {
+                        if (d.VolumeLabel.Length > najveceIme)
+                        {
+                            najveceIme = d.VolumeLabel.Length;
+                        }
+
+                    }
+                }
+
+                Console.Write("+------------------+---------------+---------+-----------+"); Console.Write("-".PadRight(najveceIme, '-')); Console.WriteLine("+");
+                Console.Write("| Oznaka diska     |Ukupna veličina|Slobodno |     %     |"); Console.Write("Naziv Diska".PadRight(najveceIme)); Console.WriteLine("+");
+                Console.Write("+------------------+---------------+---------+-----------+"); Console.Write("-".PadRight(najveceIme, '-')); Console.WriteLine("+");
+                foreach (DriveInfo d in drives)
+                {
+
+                    if (d.IsReady)
+                    {
+
+                        Console.Write("|{0, 16}  | {1, 10} GB | {2, 4} GB | {3, 7} % |",
+                        d.Name,
+                        d.TotalSize / (1024 * 1024 * 1024),
+                        d.TotalFreeSpace / (1024 * 1024 * 1024),
+                        Math.Round(((double)d.TotalFreeSpace / (double)d.TotalSize) * 100, 2));
+                        Console.Write("{0}".PadRight((najveceIme + 3) - d.VolumeLabel.Length), d.VolumeLabel); Console.WriteLine("|");
+                    }
+                    else
+                    {
+                        Console.Write("|{0, 16}  | {1, 12}  | {2, 6}  | {3, 8}  |", d.Name, "n/a", "n/a", "n/a");
+                        Console.Write("n/a".PadRight((najveceIme))); Console.WriteLine("|");
+                    }
+                }
+                Console.Write("+------------------+---------------+---------+-----------+"); Console.Write("-".PadRight((najveceIme), '-')); Console.WriteLine("+");
+
+            }
+            Console.ReadLine();
+            // Console.SetCursorPosition(0, brojRedova);
+        } //Main
+
+
+    }
+}
